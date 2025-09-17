@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa UAB/UECE - Polos de Computação no Ceará</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #16a34a;
+            --primary-dark: #14532d;
+            --primary-light: #dcfce7;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --border-color: #e5e7eb;
+            --background-color: #f9fafb;
+            --white: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f3f4f6;
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+        
+        .header {
+            background-image: linear-gradient(45deg, var(--primary-color), var(--primary-dark));
+            color: var(--white);
+            padding: 1rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 82px);
+            background-color: var(--white);
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            background-color: #f0f0f0;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: var(--white);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sidebar-header h2 {
+            color: var(--primary-dark);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-container::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .sidebar-content {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .sidebar-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar-content::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        .accordion-item {
+            border-bottom: 1px solid var(--border-color);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .accordion-header {
+            background-color: var(--white);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease-out;
+        }
+        
+        .accordion-header:hover {
+            background-color: var(--background-color);
+            transform: translateX(4px);
+        }
+        
+        .accordion-item.active .accordion-header {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+        }
+        
+        .title-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .accordion-title {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        .accordion-count {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-light);
+            transition: color 0.2s ease-out;
+        }
+        
+        .accordion-item.active .accordion-title {
+            color: var(--primary-dark);
+        }
+
+        .accordion-item.active .accordion-count {
+            color: var(--primary-dark);
+        }
+
+        .accordion-icon {
+            transition: transform 0.3s ease;
+            color: var(--text-light);
+            width: 16px;
+            height: 16px;
+        }
+        
+        .accordion-item.active .accordion-icon {
+            transform: rotate(180deg);
+            color: var(--primary-dark);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out;
+            background-color: var(--background-color);
+        }
+        
+        .accordion-item.active .accordion-content {
+            padding-bottom: 1rem;
+        }
+
+        .accordion-body {
+            padding: 0 1.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+        
+        .turma-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .turma-list li {
+            margin-bottom: 0.5rem;
+            position: relative;
+            padding-left: 1.5em;
+            line-height: 1.4;
+            opacity: 0;
+            animation: fadeIn-up 0.5s ease-out forwards;
+        }
+        
+        .accordion-item.active .turma-list li {
+             animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        .turma-list li::before {
+            content: '';
+            background-color: var(--primary-color);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            position: absolute;
+            left: 0;
+            top: 0.4em;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .leaflet-popup-content { margin: 1rem; font-size: 0.9rem; }
+        .popup-title { color: var(--primary-dark); font-weight: 700; font-size: 1.125rem; margin-bottom: 0.75rem; }
+        .popup-turmas-label { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-dark); }
+        .popup-turmas { list-style-type: none; padding-left: 0; font-size: 0.875rem; margin-top: 0.25rem; }
+        .popup-turmas li { margin-bottom: 0.25rem; position: relative; padding-left: 1.5em; }
+        .popup-turmas li::before { content: ''; background-color: var(--primary-color); width: 5px; height: 5px; border-radius: 50%; display: inline-block; position: absolute; left: 0; top: 0.4em; }
+        .leaflet-popup-close-button { padding: 8px 8px 0 0 !important; color: var(--text-light) !important; }
+
+        /* Custom Marker Styles */
+        .custom-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            background: var(--primary-color);
+            position: absolute;
+            transform: rotate(-45deg);
+            border: 2px solid var(--white);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease-out;
+        }
+        .custom-marker::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--white);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .pulsing-marker .marker-pin {
+            animation: pulse 1.5s infinite;
+            transform: rotate(-45deg) scale(1.1);
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+        
+        @media (max-width: 768px) {
+            body { overflow: auto; }
+            .container { flex-direction: column; height: auto; }
+            .map-container { height: 50vh; min-height: 300px; }
+            .sidebar { width: 100%; height: auto; border-left: none; border-top: 1px solid var(--border-color); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Mapa UAB/UECE - Computação</h1>
+        <p>Polos que oferecem o curso de Computação no Ceará</p>
+    </div>
+    
+    <div class="container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Polos de Computação</h2>
+                <div class="search-container">
+                     <input type="text" id="search-input" placeholder="Buscar polo...">
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <div id="polo-list" class="accordion">
+                    <!-- Acordeão de polos será preenchido via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Dados dos polos de computação da UECE
+        const polosComputacao = [
+            {
+                "polo": "AMONTADA",
+                "lat": -3.36,
+                "lng": -39.83,
+                "turmas": [
+                    "Turma de 2025.1"
+                ]
+            },
+            {
+                "polo": "AQUIRAZ",
+                "lat": -3.9,
+                "lng": -38.39,
+                "turmas": [
+                    "Turma de 2025.2"
+                ]
+            },
+            {
+                "polo": "BEBERIBE",
+                "lat": -4.18,
+                "lng": -38.13,
+                "turmas": [
+                    "Turma de 2022",
+                    "Turma de 2025.1"
+                ]
+            },
+            {
+                "polo": "BOA VIAGEM",
+                "lat": -5.12,
+                "lng": -39.73,
+                "turmas": [
+                    "Turma de 2022"
+                ]
+            },
+            {
+                "polo": "CAUCAIA",
+                "lat": -3.7684372,
+                "lng": -38.6383563,
+                "turmas": [
+                    "Turma de 2022",
+                    "Turma de 2025.1"
+                ]
+            },
+            {
+                "polo": "CRATEÚS",
+                "lat": -5.17,
+                "lng": -40.67,
+                "turmas": [
+                    "Turma de 2025.1"
+                ]
+            },
+            {
+                "polo": "IGUATU",
+                "lat": -6.36,
+                "lng": -39.29,
+                "turmas": [
+                    "Turma de 2022"
+                ]
+            },
+            {
+                "polo": "JAGUARIBE",
+                "lat": -5.89,
+                "lng": -38.62,
+                "turmas": [
+                    "Turma de 2025.2"
+                ]
+            },
+            {
+                "polo": "LIMOEIRO DO NORTE",
+                "lat": -5.14,
+                "lng": -38.09,
+                "turmas": [
+                    "Turma de 2025.2"
+                ]
+            },
+            {
+                "polo": "ORÓS",
+                "lat": -6.24,
+                "lng": -38.91,
+                "turmas": [
+                    "Turma de 2022"
+                ]
+            },
+            {
+                "polo": "QUIXERAMOBIM",
+                "lat": -5.19,
+                "lng": -39.29,
+                "turmas": [
+                    "Turma de 2022",
+                    "Turma de 2025.2"
+                ]
+            }
+        ];
+
+        const map = L.map('map', { zoomControl: false }).setView([-5.0, -39.5], 7.5);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const poloListContainer = document.getElementById('polo-list');
+        const searchInput = document.getElementById('search-input');
+        const markers = {};
+
+        function createPopupContent(polo) {
+            let turmasList = polo.turmas.map(turma => `<li>${turma}</li>`).join('');
+            return `<div class="popup-title">${polo.polo}</div><div class="popup-turmas-label">Turmas:</div><ul class="popup-turmas">${turmasList}</ul>`;
+        }
+        
+        function renderAccordion(polos) {
+            poloListContainer.innerHTML = '';
+            polos.sort((a, b) => a.polo.localeCompare(b.polo));
+            
+            let animationDelay = 0;
+            polos.forEach(polo => {
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div class="marker-pin"></div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30]
+                });
+
+                if (!markers[polo.polo]) {
+                     const marker = L.marker([polo.lat, polo.lng], { icon: customIcon }).addTo(map)
+                        .bindPopup(createPopupContent(polo));
+                     markers[polo.polo] = marker;
+                }
+                const marker = markers[polo.polo];
+
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'accordion-item';
+                accordionItem.setAttribute('data-polo', polo.polo);
+                accordionItem.style.animationDelay = `${animationDelay}s`;
+                animationDelay += 0.05;
+
+                const accordionHeader = document.createElement('div');
+                accordionHeader.className = 'accordion-header';
+                // Removido o contador de cursos/turmas aqui, conforme a nova estrutura
+                accordionHeader.innerHTML = `
+                    <div class="title-container">
+                        <span class="accordion-title">${polo.polo}</span>
+                    </div>
+                    <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                `;
+
+                const accordionContent = document.createElement('div');
+                accordionContent.className = 'accordion-content';
+
+                const accordionBody = document.createElement('div');
+                accordionBody.className = 'accordion-body';
+                
+                const turmaList = document.createElement('ul');
+                turmaList.className = 'turma-list';
+                turmaList.innerHTML = polo.turmas.map((turma, index) => `<li style="animation-delay: ${index * 0.05}s">${turma}</li>`).join('');
+                
+                accordionBody.appendChild(turmaList);
+                accordionContent.appendChild(accordionBody);
+                accordionItem.appendChild(accordionHeader);
+                accordionItem.appendChild(accordionContent);
+                poloListContainer.appendChild(accordionItem);
+
+                const activatePolo = () => {
+                    document.querySelectorAll('.pulsing-marker').forEach(m => m.classList.remove('pulsing-marker'));
+                    if (marker._icon) marker._icon.classList.add('pulsing-marker');
+                    
+                    const allItems = document.querySelectorAll('.accordion-item');
+                    allItems.forEach(item => {
+                        if(item.getAttribute('data-polo') === polo.polo) {
+                           if (!item.classList.contains('active')) {
+                               toggleAccordion(item, true);
+                               item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                           }
+                        } else if (item.classList.contains('active')) {
+                            toggleAccordion(item, false);
+                        }
+                    });
+                };
+                
+                accordionHeader.addEventListener('click', () => {
+                    activatePolo();
+                    marker.openPopup();
+                    map.flyTo([polo.lat, polo.lng], 11);
+                });
+
+                marker.off('click').on('click', () => {
+                    activatePolo();
+                });
+            });
+        }
+
+
+        function toggleAccordion(item, forceState) {
+            const content = item.querySelector('.accordion-content');
+            const shouldBeActive = forceState !== undefined ? forceState : !item.classList.contains('active');
+
+            if (shouldBeActive) {
+                const activeItem = document.querySelector('.accordion-item.active');
+                if (activeItem && activeItem !== item) {
+                    activeItem.classList.remove('active');
+                    activeItem.querySelector('.accordion-content').style.maxHeight = null;
+                }
+                item.classList.add('active');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                item.classList.remove('active');
+                content.style.maxHeight = null;
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredPolos = polosComputacao.filter(polo => polo.polo.toLowerCase().includes(searchTerm));
+            renderAccordion(filteredPolos);
+        });
+
+        renderAccordion(polosComputacao);
+    </script>
+</body>
+</html>
